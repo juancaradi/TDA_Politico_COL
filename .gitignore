@@ -1,0 +1,45 @@
+# ===============================
+# Entornos virtuales
+# ===============================
+.venv/
+venv/
+env/
+.env
+
+# ===============================
+# Cache Python
+# ===============================
+__pycache__/
+*.pyc
+*.pyo
+
+# ===============================
+# Datos (NO versionar)
+# ===============================
+data/raw/
+data/processed/
+
+# Logs
+logs/*
+*.log
+
+# Re-incluir la carpeta logs y data placeholder
+!logs/
+!logs/.gitkeep
+!data/.gitkeep
+
+# ===============================
+# Archivos de salida
+# ===============================
+*.json
+*.csv
+
+#EXCEPCIÓN: datos de ejemplo
+!data/sample/
+!data/sample/*.csv
+
+# ===============================
+# Sistema
+# ===============================
+.DS_Store
+Thumbs.db
