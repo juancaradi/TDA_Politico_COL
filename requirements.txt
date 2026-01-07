@@ -11,3 +11,4 @@ tzdata>=2023.3
 
 # --- Utilities ---
 urllib3>=2.0.0
+setuptools  # Fix para "No module named 'distutils'" en Python 3.12+
