@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Sismografo: Run Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.main", // <--- Esto le dice: busca el paquete src
+            "cwd": "${workspaceFolder}", // <--- Esto le dice: párate en la carpeta raíz
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
