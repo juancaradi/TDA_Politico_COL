@@ -56,7 +56,7 @@ TDA_Politico_COL
 │   │   ├── settings.py
 │   │   └── __init__.py
 │   ├── queries
-│   │   ├── colombia.py
+│   │   ├── mirrors.py
 │   │   ├── query_core.py
 │   │   └── __init__.py
 │   ├── scraping
