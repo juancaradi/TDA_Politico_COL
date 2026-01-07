@@ -115,7 +115,7 @@ TDA_Politico_COL
 ### 6. Design principle:
 Each module can evolve independently (queries, mirrors, windows, logging) without modifying a monolithic script.
 
-## Installation (Windows / PowerShell)
+### Installation (Windows / PowerShell)
 
 ### Environment Setup
 
@@ -271,7 +271,7 @@ Exploratory notebooks
 Unit tests for date & metric parsing
 
 
-# ⚠️ Ethics & Disclaimer
+##### ⚠️ Ethics & Disclaimer
 
 This project is intended for academic research and portfolio purposes.
 
