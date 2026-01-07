@@ -1,194 +1,287 @@
-TDA_Politico_COL — Political Sismograph (Colombia)
+# 🇨🇴 TDA Political Seismograph (Colombia)
 
-A reproducible data collection pipeline to capture and audit political
-conversation on X/Twitter related to Colombia, using public mirrors
-(Nitter / XCancel) and real temporal windows.
+A high-precision, fault-tolerant data acquisition pipeline for capturing and auditing political discourse on **X (formerly Twitter)** using public mirrors (Nitter / XCancel), designed for **scientific reproducibility** and downstream analysis in **Topological Data Analysis (TDA)**, NLP, and Network Theory.
 
-Focus: building a high-quality, auditable dataset with strict time
-control, deduplication, and telemetry, suitable for downstream analysis
-(topic modeling, networks, TDA, time series, etc.).
+> **Status:** Active Development  
+> **Python:** 3.10+  
+> **Primary Focus:** Temporal fidelity, auditability, and robustness under mirror instability.
 
+---
 
-1) Motivation
+## 📖 Overview
 
-Collecting tweets through search interfaces usually introduces several
-well-known issues:
+**TDA_Politico_COL** is not a conventional web scraper.  
+It is a **temporal sampling instrument** designed to reconstruct political conversation streams with **strict control over time, provenance, and failure modes**.
 
-- Recency bias: results are returned ordered by most recent first.
-- Geographic noise: terms such as Congress, Senate, Constitutional Court
-  appear in multiple countries.
-- Mirror instability: different mirrors fail or change HTML structure.
-- Lack of auditability: low yield blocks are hard to diagnose.
-- Duplication: the same tweet may appear across mirrors or pages.
+Typical scraping approaches suffer from:
+- Recency bias
+- Temporal gaps
+- Mirror-specific duplication
+- Silent failures
+- Poor auditability
 
-This project addresses these issues by:
+This project addresses those issues by treating data collection as a **controlled experiment**, not a crawl.
 
-- Sampling through real sub-windows of time.
-- Filtering tweets strictly by timestamp.
-- Deduplicating by status_id.
-- Logging every request and block for audit and diagnostics.
+The system behaves as a **Political Seismograph**:  
+it scans the political discourse through real temporal sub-windows, records what was observed, what failed, and why.
 
+---
 
-2) Main Features
+## 🎯 Design Goals
 
-- Real temporal sub-windows using since_time / until_time (epoch).
-- Correct timezone handling: America/Bogota <-> UTC.
-- Robust deduplication across mirrors and pages.
-- Extraction of engagement metrics (K/M) with raw audit fields.
-- Hashtag and mention extraction.
-- Separate media channel (press outlets).
-- Incremental CSV writing to avoid RAM overload.
-- Per-window and per-request audit logs.
-- Final run summary with throughput and failure statistics.
+- **Temporal accuracy** over volume
+- **Auditability** over opacity
+- **Reproducibility** over convenience
+- **Separation of concerns** over monolithic scripts
 
+---
 
-3) Repository Structure
+## 🚀 Key Features
 
+### 1. Real Temporal Sampling
+- Epoch-based queries using `since_time` / `until_time`
+- Fixed **10-minute sub-windows**
+- Strict filtering by tweet timestamp (UTC ↔ America/Bogota)
+
+### 2. Stratified Traffic Allocation
+- Daily quotas split by hour using a diurnal traffic profile
+- Sub-hour weighting to mitigate “most recent first” bias
+- Weekend vs weekday differentiation
+
+### 3. Mirror Resilience
+- Automatic rotation across public mirrors
+- Graceful fallback on empty or failing mirrors
+- Robust deduplication across mirrors and pages via `status_id`
+
+### 4. Full Telemetry & Audit Logs
+Every execution leaves a forensic trail:
+- What was requested
+- What was observed
+- What failed
+- How long it took
+
+### 5. Incremental & Safe Storage
+- Incremental CSV writes (flush strategy)
+- No in-memory accumulation of large datasets
+- Safe termination handling (Ctrl + C)
+
+---
+
+## 🧠 Semantic Channels
+
+Queries are organized into four semantic dimensions (`src/queries/query_core.py`):
+
+| Channel | Description | Research Use |
+|------|------------|-------------|
+| **TIPO_A_ACTORES** | Political actors and parties | Node tracking |
+| **TIPO_B_FRAMES** | Institutions, issues, economy, security | Context modeling |
+| **TIPO_B2_MEDIOS** | Press and media outlets | Agenda-setting |
+| **TIPO_C_MIXTA** | Actors ∩ Issues | Narrative intersections |
+| **TIPO_D_INTENSIDAD** | Polarizing vocabulary | Discourse intensity |
+
+---
+
+## 🗂 Repository Structure
+
+```text
 TDA_Politico_COL
 ├── data
-│   ├── raw
-│   ├── processed
-│   └── sample
-├── logs
-│   └── .gitkeep
+│   ├── raw                 # (Output) Incremental CSVs land here
+│   └── sample              # Small datasets for testing/validation
+├── logs                    # (Output) Session statistics, telemetry & error traces
 ├── src
 │   ├── config
-│   │   ├── settings.py
-│   │   └── __init__.py
+│   │   └── settings.py     # Quotas, paths, limits & global constants
 │   ├── queries
-│   │   ├── mirrors.py
-│   │   ├── query_core.py
-│   │   └── __init__.py
+│   │   ├── mirrors.py      # Nitter instance list & rotation logic
+│   │   └── query_core.py   # Semantic definitions (Actors, Frames, Intensity)
 │   ├── scraping
-│   │   ├── browser.py
-│   │   ├── extractor.py
-│   │   ├── orchestrator.py
-│   │   └── __init__.py
+│   │   ├── browser.py      # Undetected Chrome infrastructure
+│   │   ├── extractor.py    # Sub-window sampling & retry logic (The Soldier)
+│   │   └── orchestrator.py # Time & budget management (The General)
 │   ├── utils
-│   │   ├── dates.py
-│   │   ├── logging.py
-│   │   ├── metrics.py
-│   │   ├── text.py
-│   │   └── __init__.py
-│   ├── main.py
-│   └── __init__.py
+│   │   ├── dates.py        # Timezone handling & epoch conversion
+│   │   ├── logging.py      # Telemetry system & CSV flushing
+│   │   ├── metrics.py      # Parsing engagement numbers (K/M -> int)
+│   │   └── text.py         # NLP normalization & Mojibake fixes
+│   └── main.py             # Application entry point
 ├── .gitignore
+├── CHANGELOG.md            # History of changes & versions
+├── README.md
 └── requirements.txt
+```
 
 
-Design principle:
-each component can be modified independently (queries, windows,
-priors, mirrors, logging) without editing a monolithic script.
+### 6. Design principle:
+Each module can evolve independently (queries, mirrors, windows, logging) without modifying a monolithic script.
 
+## Installation (Windows / PowerShell)
 
-4) Installation (Windows + PowerShell)
+### Environment Setup
 
-4.1 Create and activate virtual environment
-
+```powershell
+# Create virtual environment
 python -m venv .venv
+
+# Activate (Windows PowerShell)
 .\.venv\Scripts\Activate.ps1
 
-4.2 Install dependencies
-
+# Install dependencies
 pip install -r requirements.txt
+```
+
+### Requirements
+
+- Google Chrome (stable version)
+
+- Python ≥ 3.10
 
 
-5) Running the pipeline
+## ▶️ 7.  Running the Pipeline
 
 From the project root:
 
+```powershell
 python -m src.main
-
-Note:
-The scraper relies on Selenium and undetected_chromedriver.
-Google Chrome must be installed.
+```
 
 
-6) Outputs
+### During execution, the console will display:
 
-Dataset (CSV)
-- Written incrementally during execution.
-- Typical fields include:
-  - timestamp_local
-  - timestamp_utc
-  - query_type
-  - texto_raw
-  - texto_norm
-  - hashtags
-  - menciones
-  - replies, retweets, quotes, likes
-  - status_id
-  - mirror_used
-  - query_hash
+- Active channel and sub-window
 
-Logs and audit artifacts
+- Mirror currently in use
 
-window_log.csv
-- One row per sub-window, channel, and mirror.
-- Contains counts of seen items, valid dates, discarded items, and stop
-  reasons.
+- Items seen vs accepted
 
-request_log.csv
-- One row per request attempt (mirror + sub-window).
-- Includes latency, pages used, and short error messages if applicable.
+- Heartbeat signals confirming liveness
 
-run_summary.json
-- Final execution summary:
-  - total tweets collected
-  - total requests
-  - success and failure rates
-  - throughput (tweets per minute)
-  - performance by channel and mirror
+## 📤 8. Outputs
 
+### a. Raw Dataset
 
-7) Debugging and interpretation tips
+- Location: data/raw/
 
-High outside_window counts:
-- Likely timezone conversion issues or HTML date parsing changes.
+- Incrementally written CSV
 
-High dates_fail:
-- Date selector or attribute may have changed in the mirror HTML.
+- No preprocessing beyond extraction
 
-Low obtained_n with high items_seen:
-- Low real tweet density in that window,
-- Overly broad queries,
-- Insufficient pagination or mirror availability.
+- Suitable for downstream ETL, NLP, or TDA pipelines
+
+- Typical fields:
+
+- timestamp_local
+
+- timestamp_utc
+
+- query_type
+
+- texto_raw
+
+- texto_norm
+
+- hashtags
+
+- menciones
+
+- replies, retweets, quotes, likes
+
+- status_id
+
+- mirror_used
+
+- query_hash
 
 
-8) Customization points
+## b. Audit & Telemetry Logs (logs/)
 
-The project is designed to be modified safely:
+### window_log.csv
 
-- Change sub-window size:
-  SUBWINDOW_MINUTES in config/settings.py
+- One row per sub-window × channel × mirror
 
-- Change mirrors:
-  MIRRORS in config/settings.py
+- Counts of valid, discarded, and failed items
 
-- Change queries or channels:
-  query_core.py in src/queries
+- Stop reasons and diagnostics
 
-- Change study date range:
-  orchestrator logic in src/scraping
+### request_log.csv
 
-- Change daily sampling budgets:
-  TOTAL_PER_DAY_PER_CHANNEL_* in settings
+- One row per request attempt
 
+- Latency, pages traversed, error summaries
 
-9) Planned extensions
+### run_summary.json
 
-- Colombia relevance score using:
-  - local entity co-occurrence
-  - language detection
-  - profile location heuristics
-- Semantic filtering using embeddings to reduce cross-country noise.
-- Export to parquet with schema.
-- Exploratory notebooks for downstream analysis.
-- Unit tests for date parsing and metric normalization.
+- Final execution summary
+
+- Throughput (tweets/min)
+
+- Success & failure rates
+
+- Performance by channel and mirror
 
 
-10) Disclaimer
+## 🧪 9. Debugging & Interpretation
 
-This project is intended for research and portfolio purposes.
-Users are responsible for complying with platform policies and
-ethical considerations when collecting, storing, or publishing data.
+### High outside_window
+→ Timezone mismatch or HTML date parsing change
+
+### High dates_fail
+→ Mirror HTML structure changed
+
+### Low obtained_n with high items_seen
+→ Low tweet density, overly broad query, or mirror degradation
+
+## 🛑 10. Safe Termination
+
+- The pipeline handles Ctrl + C gracefully:
+
+- Flushes buffers
+
+- Writes logs
+
+- Generates final summaries
+
+- Exits without data corruption
+
+## 🧩 11. Customization Points
+
+Sub-window size: SUBWINDOW_MINUTES
+
+Daily quotas: TOTAL_PER_DAY_PER_CHANNEL_*
+
+Mirrors: src/queries/mirrors.py
+
+Queries & semantics: src/queries/query_core.py
+
+Study date range: src/main.py
+
+
+## 🔭 12. Planned Extensions
+
+Colombia relevance scoring
+
+Language detection and filtering
+
+Semantic embeddings for noise reduction
+
+Parquet export with schema
+
+Exploratory notebooks
+
+Unit tests for date & metric parsing
+
+
+# ⚠️ Ethics & Disclaimer
+
+This project is intended for academic research and portfolio purposes.
+
+Uses only publicly available mirror data
+
+No private data is accessed
+
+Users are responsible for complying with platform policies and local regulations
+
+```python
+# Author: Juan Camilo Ramírez Díaz
+# Context: Mathematics, Data Analysis & Topological Data Analysis Research
+```
