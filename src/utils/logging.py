@@ -15,6 +15,44 @@ def _short_err(e: Exception, maxlen: int = 160) -> str:
     return s[:maxlen]
 
 
+def append_csv_rows(path: Path, rows: list[dict], write_header_if_new: bool = True) -> None:
+    """
+    Append incremental a CSV (crea header solo si el archivo no existe).
+    - Mantiene UTF-8.
+    - Evita reescribir todo el dataset/log en memoria.
+    """
+    if not rows:
+        return
+
+    df = pd.DataFrame(rows)
+    df.to_csv(
+        path,
+        mode="a",
+        index=False,
+        header=(write_header_if_new and (not path.exists())),
+        encoding="utf-8",
+        lineterminator="\n",
+    )
+
+
+class Heartbeat:
+    """
+    Heartbeat simple: imprime cada 'every_sec' para confirmar que el proceso sigue vivo.
+    """
+    def __init__(self, every_sec: float = 30.0):
+        self.every_sec = float(every_sec)
+        self._last_ts = None
+
+    def tick(self, msg: str = "💓 Heartbeat: running...") -> None:
+        now = datetime.now(timezone.utc).timestamp()
+        if self._last_ts is None:
+            self._last_ts = now
+            return
+        if (now - self._last_ts) >= self.every_sec:
+            print(msg)
+            self._last_ts = now
+
+
 @dataclass
 class RunStats:
     total_rows_written: int = 0
@@ -48,12 +86,10 @@ class Telemetry:
     def flush_request_log(self) -> None:
         if not self._request_log_buffer:
             return
-        df = pd.DataFrame(self._request_log_buffer)
-        df.to_csv(
-            self.request_log_path,
-            mode="a",
-            index=False,
-            header=(self.write_header_if_new and (not self.request_log_path.exists())),
+        append_csv_rows(
+            path=self.request_log_path,
+            rows=self._request_log_buffer,
+            write_header_if_new=self.write_header_if_new,
         )
         self._request_log_buffer = []
 

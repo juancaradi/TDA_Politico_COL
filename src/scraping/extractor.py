@@ -11,6 +11,7 @@ import re
 import time
 import urllib.parse
 from datetime import datetime
+from pathlib import Path
 
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
@@ -20,7 +21,7 @@ from src.queries.query_core import QUERY_CORE
 from src.utils.dates import parse_date_any_utc, to_epoch_utc
 from src.utils.metrics import parse_stats_best_effort
 from src.utils.text import normalize_whitespace
-from src.utils.logging import _short_err, log_window_row
+from src.utils.logging import _short_err, log_window_row, append_csv_rows
 
 
 def query_hash(q: str) -> str:
@@ -42,9 +43,18 @@ def build_search_path_epoch(query_raw: str, sub_start_local, sub_end_local) -> s
     return f"/search?f=tweets&q={urllib.parse.quote(full_query)}"
 
 
-def extraer_subventana_epoch(driver, mirrors: list[str], settings: Settings, telemetry,
-                            sub_start_local, sub_end_local, etapa: str, target: int,
-                            window_log: list[dict]) -> list[dict]:
+def extraer_subventana_epoch(
+    driver,
+    mirrors: list[str],
+    settings: Settings,
+    telemetry,
+    sub_start_local,
+    sub_end_local,
+    etapa: str,
+    target: int,
+    window_log_path: Path,
+    write_header_if_new: bool,
+) -> list[dict]:
     """
     Pide tweets usando since_time/until_time (epoch) para la subventana,
     filtra por dt_tweet convertido a hora local (Bogotá) y recolecta hasta 'target'.
@@ -193,24 +203,29 @@ def extraer_subventana_epoch(driver, mirrors: list[str], settings: Settings, tel
                     stop_reason = "no_more_pages"
                     break
 
-            window_log.append(log_window_row(
-                sub_start_local=sub_start_local,
-                sub_end_local=sub_end_local,
-                etapa=etapa,
-                mirror=mirror,
-                mode_used="epoch",
-                requested_target=target,
-                need_raw=need_raw,
-                obtained_n=len(recolectados),
-                pages_used=pages_used,
-                items_seen=seen_items_total,
-                dates_ok=dates_ok,
-                dates_fail=dates_fail,
-                outside_window=outside_window,
-                no_link=no_link,
-                no_content=no_content,
-                stop_reason=stop_reason,
-            ))
+            # window_log incremental (1 fila por intento mirror+subventana)
+            append_csv_rows(
+                path=window_log_path,
+                rows=[log_window_row(
+                    sub_start_local=sub_start_local,
+                    sub_end_local=sub_end_local,
+                    etapa=etapa,
+                    mirror=mirror,
+                    mode_used="epoch",
+                    requested_target=target,
+                    need_raw=need_raw,
+                    obtained_n=len(recolectados),
+                    pages_used=pages_used,
+                    items_seen=seen_items_total,
+                    dates_ok=dates_ok,
+                    dates_fail=dates_fail,
+                    outside_window=outside_window,
+                    no_link=no_link,
+                    no_content=no_content,
+                    stop_reason=stop_reason,
+                )],
+                write_header_if_new=write_header_if_new,
+            )
 
             if len(recolectados) > 0:
                 print(f"   ✅ obtenido {len(recolectados)}/{target} | pages={pages_used} | stop={stop_reason}")
@@ -229,24 +244,28 @@ def extraer_subventana_epoch(driver, mirrors: list[str], settings: Settings, tel
             if settings.DEBUG:
                 print(f"   ⚠️ Error en mirror {mirror}: {e}")
 
-            window_log.append(log_window_row(
-                sub_start_local=sub_start_local,
-                sub_end_local=sub_end_local,
-                etapa=etapa,
-                mirror=mirror,
-                mode_used="epoch",
-                requested_target=target,
-                need_raw=need_raw,
-                obtained_n=0,
-                pages_used=0,
-                items_seen=0,
-                dates_ok=0,
-                dates_fail=0,
-                outside_window=0,
-                no_link=0,
-                no_content=0,
-                stop_reason=f"error:{error_type}",
-            ))
+            append_csv_rows(
+                path=window_log_path,
+                rows=[log_window_row(
+                    sub_start_local=sub_start_local,
+                    sub_end_local=sub_end_local,
+                    etapa=etapa,
+                    mirror=mirror,
+                    mode_used="epoch",
+                    requested_target=target,
+                    need_raw=need_raw,
+                    obtained_n=0,
+                    pages_used=0,
+                    items_seen=0,
+                    dates_ok=0,
+                    dates_fail=0,
+                    outside_window=0,
+                    no_link=0,
+                    no_content=0,
+                    stop_reason=f"error:{error_type}",
+                )],
+                write_header_if_new=write_header_if_new,
+            )
 
             time.sleep(random.uniform(*settings.SLEEP_BETWEEN_MIRRORS))
 

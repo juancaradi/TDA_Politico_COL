@@ -5,6 +5,7 @@
 # Nota:
 # - Paths se anclan al PROJECT_ROOT para evitar conflictos por cwd.
 # - data/ y logs/ ya existen en el repo y se usan como destinos.
+# - Guardamos dataset "crudo" en data/raw (sin preprocesamiento).
 # ============================================================
 
 from __future__ import annotations
@@ -23,7 +24,6 @@ DATA_DIR = PROJECT_ROOT / "data"
 LOGS_DIR = PROJECT_ROOT / "logs"
 
 DATA_RAW_DIR = DATA_DIR / "raw"
-DATA_PROCESSED_DIR = DATA_DIR / "processed"
 DATA_SAMPLE_DIR = DATA_DIR / "sample"
 
 
@@ -54,8 +54,8 @@ class Settings:
     # Oversample factor
     OVERSAMPLE_FACTOR: int = 3
 
-    # Outputs (en data/logs)
-    DATASET_PATH: Path = DATA_PROCESSED_DIR / "SISMOGRAFO_TDA_DATASET.csv"
+    # Outputs (raw + logs)
+    DATASET_PATH: Path = DATA_RAW_DIR / "SISMOGRAFO_TDA_DATASET_RAW.csv"
     WINDOW_LOG_PATH: Path = LOGS_DIR / "window_log.csv"
     REQUEST_LOG_PATH: Path = LOGS_DIR / "request_log.csv"
     RUN_SUMMARY_PATH: Path = LOGS_DIR / "run_summary.json"
@@ -70,7 +70,7 @@ def ensure_project_dirs() -> None:
     Crea directorios esperados si no existen.
     No crea archivos (solo carpetas).
     """
-    for p in [DATA_DIR, LOGS_DIR, DATA_RAW_DIR, DATA_PROCESSED_DIR, DATA_SAMPLE_DIR]:
+    for p in [DATA_DIR, LOGS_DIR, DATA_RAW_DIR, DATA_SAMPLE_DIR]:
         p.mkdir(parents=True, exist_ok=True)
 
 

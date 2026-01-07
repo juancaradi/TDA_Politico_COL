@@ -9,11 +9,9 @@ import random
 import time
 from datetime import datetime, timedelta
 
-import pandas as pd
-
-from src.config.settings import Settings, TZ_LOCAL
+from src.config.settings import Settings
 from src.queries.query_core import CHANNELS
-from src.utils.logging import print_block_dashboard
+from src.utils.logging import print_block_dashboard, append_csv_rows, Heartbeat
 from src.scraping.extractor import extraer_subventana_epoch
 
 
@@ -81,14 +79,6 @@ def allocate_targets_for_day_by_hour(total_per_day: int, is_weekend: bool) -> li
     return targets
 
 
-def allocate_targets_for_day(total_per_day: int):
-    """
-    Placeholder (si luego quieres retornar dict {hour: target}).
-    Lo dejamos por compatibilidad conceptual con tu script original.
-    """
-    return None
-
-
 class IncrementalWriter:
     def __init__(self, dataset_path, flush_every: int, write_header_if_new: bool, telemetry):
         self.dataset_path = dataset_path
@@ -105,27 +95,22 @@ class IncrementalWriter:
     def flush(self) -> None:
         if not self.buffer:
             return
-        df = pd.DataFrame(self.buffer)
-        df.to_csv(
-            self.dataset_path,
-            mode="a",
-            index=False,
-            header=(self.write_header_if_new and (not self.dataset_path.exists())),
-        )
+        append_csv_rows(self.dataset_path, self.buffer, write_header_if_new=self.write_header_if_new)
         self.telemetry.add_rows_written(len(self.buffer))
         print(f"💾 Flush dataset: +{len(self.buffer)} filas -> {self.dataset_path}")
         self.buffer = []
 
 
 def run_study(driver, mirrors: list[str], settings: Settings, telemetry,
-              start_study: datetime, end_study: datetime) -> tuple[list[dict], IncrementalWriter]:
-    window_log: list[dict] = []
+              start_study: datetime, end_study: datetime) -> IncrementalWriter:
     writer = IncrementalWriter(
         dataset_path=settings.DATASET_PATH,
         flush_every=settings.FLUSH_EVERY_N_ROWS,
         write_header_if_new=settings.WRITE_HEADER_IF_NEW,
         telemetry=telemetry,
     )
+
+    hb = Heartbeat(every_sec=30.0)
 
     day_cursor = start_study
     while day_cursor < end_study:
@@ -144,6 +129,8 @@ def run_study(driver, mirrors: list[str], settings: Settings, telemetry,
 
         hour_cursor = day_start
         while hour_cursor < day_end:
+            hb.tick("💓 Heartbeat: scraper running (no freeze detected)...")
+
             hour_end = hour_cursor + timedelta(hours=1)
 
             hour_idx = hour_cursor.hour
@@ -166,6 +153,8 @@ def run_study(driver, mirrors: list[str], settings: Settings, telemetry,
                 print("-" * 86)
 
                 for i in range(6):
+                    hb.tick("💓 Heartbeat: still running...")
+
                     sub_start = hour_cursor + timedelta(minutes=i * settings.SUBWINDOW_MINUTES)
                     sub_end = sub_start + timedelta(minutes=settings.SUBWINDOW_MINUTES)
                     target = sub_targets[i]
@@ -190,7 +179,8 @@ def run_study(driver, mirrors: list[str], settings: Settings, telemetry,
                         sub_end_local=sub_end,
                         etapa=etapa,
                         target=target,
-                        window_log=window_log,
+                        window_log_path=settings.WINDOW_LOG_PATH,
+                        write_header_if_new=settings.WRITE_HEADER_IF_NEW,
                     )
 
                     attempts = 1
@@ -212,4 +202,4 @@ def run_study(driver, mirrors: list[str], settings: Settings, telemetry,
 
         day_cursor = day_start + timedelta(days=1)
 
-    return window_log, writer
+    return writer

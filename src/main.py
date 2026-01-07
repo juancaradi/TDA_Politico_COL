@@ -2,32 +2,10 @@
 # ============================================================
 # SISMÓGRAFO TDA (Nitter/XCancel mirrors) — COMPLETO + DEBUG
 # ============================================================
-# ✅ Ventanas reales (subventanas) con since_time/until_time (epoch)
-# ✅ FIX CRÍTICO: manejo correcto de zona horaria (Bogotá vs UTC)
-# ✅ Deduplicación robusta por status_id (entre mirrors y dentro de ventana)
-# ✅ Métricas K/M robustas + auditoría stats_raw
-# ✅ Hashtags + menciones
-# ✅ Canal MEDIOS separado (TIPO_B2_MEDIOS)
-# ✅ window_log.csv (auditoría por subventana/canal/mirror)
-# ✅ Debug en consola (conteos, fechas, razón de descarte)
-# ✅ Guardado incremental (flush) sin cargar todo en RAM
-# ✅ Limpieza de texto con “mojibake fix” (CagÃ© -> Cagué), best-effort
-#
-# ✅ (AGREGADO) request_log.csv: 1 fila por intento (mirror+subventana)
-# ✅ (AGREGADO) run_summary.json: resumen final (volumen, tasas, latencia, fallos)
-# ✅ (AGREGADO) Dashboard en consola por subventana: reqs, ok%, tweets/min, elapsed
-# ✅ (AGREGADO) Métricas de desempeño por canal y por mirror (telemetría ligera)
-#
-# Nota:
-# - Mirrors pueden variar; usamos fallback espejo a espejo.
-# - El orden es “más reciente primero”; mitigamos sesgo usando subventanas pequeñas
-#   y presupuesto proporcional (prior) por hora/minuto.
-# ============================================================
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-import pandas as pd
+from datetime import datetime
 
 from src.config.settings import Settings, TZ_LOCAL, ensure_project_dirs
 from src.queries.mirrors import MIRRORS
@@ -55,11 +33,11 @@ def main() -> None:
     start_study = datetime(2025, 6, 4, 0, 0, tzinfo=TZ_LOCAL)
     end_study = datetime(2025, 6, 11, 0, 0, tzinfo=TZ_LOCAL)
 
-    window_log = []
     writer = None
+    stopped_by_keyboard = False
 
     try:
-        window_log, writer = run_study(
+        writer = run_study(
             driver=driver,
             mirrors=MIRRORS,
             settings=settings,
@@ -67,6 +45,10 @@ def main() -> None:
             start_study=start_study,
             end_study=end_study,
         )
+
+    except KeyboardInterrupt:
+        stopped_by_keyboard = True
+        print("\n🛑 Detenido manualmente por teclado (Ctrl + C). Guardando progreso y cerrando...")
 
     finally:
         # Flush final dataset buffer
@@ -76,30 +58,29 @@ def main() -> None:
         # Flush final request_log
         telemetry.flush_request_log()
 
-        # Guardar window_log completo
-        if window_log:
-            pd.DataFrame(window_log).to_csv(settings.WINDOW_LOG_PATH, index=False)
-            print(f"🧾 window_log guardado en: {settings.WINDOW_LOG_PATH}")
-
         # run_summary final
         telemetry.write_run_summary(
             dataset_path=settings.DATASET_PATH,
             window_log_path=settings.WINDOW_LOG_PATH,
         )
+
         print(f"✅ run_summary.json guardado en: {settings.RUN_SUMMARY_PATH}")
         print(f"✅ request_log.csv guardado en: {settings.REQUEST_LOG_PATH}")
+        print(f"✅ window_log.csv guardado en:  {settings.WINDOW_LOG_PATH}")
 
-        driver.quit()
+        try:
+            driver.quit()
+        except Exception:
+            pass
+
+        if stopped_by_keyboard:
+            print("✅ Cierre limpio tras Ctrl + C (sin errores).")
 
         print("\n✅ Proceso finalizado.")
-        print(f"   - Dataset:      {settings.DATASET_PATH}")
+        print(f"   - Dataset RAW:  {settings.DATASET_PATH}")
         print(f"   - window_log:   {settings.WINDOW_LOG_PATH}")
         print(f"   - request_log:  {settings.REQUEST_LOG_PATH}")
         print(f"   - run_summary:  {settings.RUN_SUMMARY_PATH}")
-        print("   Tip rápido de diagnóstico con window_log:")
-        print("     - outside_window alto => TZ mal (pero aquí ya está corregido con Bogota<->UTC)")
-        print("     - dates_fail alto     => cambió HTML/selector del date.title")
-        print("     - obtained_n bajo     => poca densidad o necesitas más mirrors / más Load more")
 
 
 if __name__ == "__main__":
